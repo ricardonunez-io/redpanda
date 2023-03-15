@@ -107,7 +107,7 @@ class Redpanda:
             line = await self.process.stdout.readline()
             if not line:
                 break
-            line = line.decode("utf8").rstrip()
+            line = line.decode("utf8", errors="replace").rstrip()
             print(f"{self.process.pid}: {line}")
 
         await self.process.wait()
