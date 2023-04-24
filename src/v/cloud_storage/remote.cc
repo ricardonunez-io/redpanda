@@ -1019,7 +1019,9 @@ ss::future<remote::list_result> remote::list_objects(
   retry_chain_node& parent,
   std::optional<cloud_storage_clients::object_key> prefix,
   std::optional<char> delimiter,
-  std::optional<cloud_storage_clients::client::item_filter> item_filter) {
+  std::optional<cloud_storage_clients::client::item_filter> item_filter,
+  std::optional<ss::sstring> continuation_token,
+  remote::list_paginate paginate) {
     ss::gate::holder gh{_gate};
     retry_chain_node fib(&parent);
     retry_chain_logger ctxlog(cst_log, fib);
@@ -1029,7 +1031,6 @@ ss::future<remote::list_result> remote::list_objects(
     std::optional<list_result> result;
 
     bool items_remaining = true;
-    std::optional<ss::sstring> continuation_token = std::nullopt;
 
     // Gathers the items from a series of successful ListObjectsV2 calls
     cloud_storage_clients::client::list_bucket_result list_bucket_result;
@@ -1048,6 +1049,14 @@ ss::future<remote::list_result> remote::list_objects(
 
         if (res) {
             auto list_result = res.value();
+
+            if (paginate == list_paginate::yes) {
+                // Do not aggregate results into list_bucket_result, just
+                // return the individual page and let caller handle
+                // pagination.
+                co_return list_result;
+            }
+
             // Successful call, prepare for future calls by getting
             // continuation_token if result was truncated
             items_remaining = list_result.is_truncated;

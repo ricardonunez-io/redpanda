@@ -332,6 +332,8 @@ public:
       cloud_storage_clients::client::list_bucket_result,
       cloud_storage_clients::error_outcome>;
 
+    using list_paginate = ss::bool_class<struct list_paginate_tag>;
+
     /// \brief Lists objects in a bucket
     ///
     /// \param name The bucket to delete from
@@ -340,6 +342,8 @@ public:
     /// \param delimiter A character to use as a delimiter when grouping list
     /// results
     /// \param item_filter Optional filter to apply to items before
+    /// \param paginate If true, return one API result with a continuation
+    ///                 marker, instead of a monolithic result.
     /// collecting
     ss::future<list_result> list_objects(
       const cloud_storage_clients::bucket_name& name,
@@ -347,7 +351,9 @@ public:
       std::optional<cloud_storage_clients::object_key> prefix = std::nullopt,
       std::optional<char> delimiter = std::nullopt,
       std::optional<cloud_storage_clients::client::item_filter> item_filter
-      = std::nullopt);
+      = std::nullopt,
+      std::optional<ss::sstring> continuation_token = "",
+      list_paginate paginated = list_paginate::no);
 
     /// \brief Upload small objects to bucket. Suitable for uploading simple
     /// strings, does not check for leadership before upload like the segment
