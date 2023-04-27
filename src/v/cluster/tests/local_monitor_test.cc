@@ -61,11 +61,14 @@ local_monitor_fixture::local_monitor_fixture()
         [](features::feature_table& f) { f.testing_activate_all(); })
       .get();
 
+    _memory_sampling_service.start(std::ref(_test_logger)).get();
+
     _storage_api
       .start(
         [kvstore_conf]() { return kvstore_conf; },
         [log_conf]() { return log_conf; },
-        std::ref(_feature_table))
+        std::ref(_feature_table),
+        std::ref(_memory_sampling_service))
       .get0();
 
     clusterlog.info("{}: create", __func__);
@@ -95,6 +98,7 @@ local_monitor_fixture::~local_monitor_fixture() {
     }
     _storage_api.stop().get0();
     _storage_node_api.stop().get0();
+    _memory_sampling_service.stop().get();
     _feature_table.stop().get();
 }
 

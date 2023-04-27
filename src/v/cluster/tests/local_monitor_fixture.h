@@ -11,9 +11,11 @@
 
 #pragma once
 #include "cluster/node/local_monitor.h"
+#include "resource_mgmt/memory_sampling.h"
 #include "storage/api.h"
 
 #include <seastar/core/sstring.hh>
+#include <seastar/util/log.hh>
 
 #include <string_view>
 
@@ -22,8 +24,10 @@ struct local_monitor_fixture {
     local_monitor_fixture(const local_monitor_fixture&) = delete;
     ~local_monitor_fixture();
 
+    ss::logger _test_logger{"monitor-test-logger"};
     std::filesystem::path _test_path;
     ss::sharded<features::feature_table> _feature_table;
+    ss::sharded<memory_sampling> _memory_sampling_service;
     ss::sharded<storage::api> _storage_api;
     ss::sharded<storage::node_api> _storage_node_api;
     cluster::node::local_monitor _local_monitor;
