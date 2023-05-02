@@ -61,7 +61,9 @@ local_monitor_fixture::local_monitor_fixture()
         [](features::feature_table& f) { f.testing_activate_all(); })
       .get();
 
-    _memory_sampling_service.start(std::ref(_test_logger)).get();
+    _memory_sampling_service
+      .start(std::ref(_test_logger), config::mock_binding<bool>(false))
+      .get();
 
     _storage_api
       .start(
