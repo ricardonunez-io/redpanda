@@ -112,6 +112,19 @@ public:
         uint32_t deletions{0};
         uint32_t manifest_uploads{0};
         uint32_t metadata_syncs{0};
+
+        bool quota_exhausted() const { return remaining <= run_quota_t{0}; };
+        void consume_quota(run_quota_t n) {
+            consumed += n;
+            remaining = remaining - std::min(run_quota_t(n), remaining);
+
+            // If caller has consumed some units, they have done some work.
+            // (they might still set status to an error if the units were
+            //  consumed but the work wasn't successful)
+            if (status == run_status::skipped) {
+                status = run_status::ok;
+            }
+        }
     };
 
     /// Stop the job. The job object can't be reused after that.
