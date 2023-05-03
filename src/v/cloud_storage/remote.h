@@ -370,6 +370,17 @@ public:
       const cloud_storage_clients::object_tag_formatter& tags,
       const char* log_object_type = "object");
 
+    /// \brief Download small objects from the bucket.  Do not use for
+    /// objects larger than a few kilobytes: see the streaming methods
+    /// for segment/manifest download.
+    /// \param bucket The bucket to upload to
+    /// \param object_path The path to upload to
+    ss::future<download_result> download_object(
+      const cloud_storage_clients::bucket_name& bucket,
+      const cloud_storage_clients::object_key& object_path,
+      iobuf& output,
+      retry_chain_node& parent);
+
     ss::future<download_result> do_download_manifest(
       const cloud_storage_clients::bucket_name& bucket,
       const std::pair<manifest_format, remote_manifest_path>& format_key,
