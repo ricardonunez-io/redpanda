@@ -98,6 +98,7 @@ public:
         offset_translator = 4,
         usage = 5,
         stms = 6,
+        cloud_storage = 7,
         /* your sub-system here */
     };
 
