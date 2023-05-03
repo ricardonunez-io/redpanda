@@ -1221,6 +1221,8 @@ void application::wire_up_redpanda_services(model::node_id node_id) {
         construct_service(
           _archival_scrubber,
           ss::sharded_parameter(
+            [&s = storage]() { return std::ref(s.local()); }),
+          ss::sharded_parameter(
             [&api = cloud_storage_api]() { return std::ref(api.local()); }),
           ss::sharded_parameter([&t = controller->get_topics_state()]() {
               return std::ref(t.local());
