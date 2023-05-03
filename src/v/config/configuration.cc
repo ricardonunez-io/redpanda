@@ -1540,6 +1540,16 @@ configuration::configuration()
       "violations. Normally, this options should be disabled.",
       {.needs_restart = needs_restart::no, .visibility = visibility::tunable},
       false)
+  , cloud_storage_metadata_scrub_interval(
+      *this,
+      "cloud_storage_metadata_scrub_interval",
+      "Period between scrubs of remote metadata in tiered storage, during "
+      "which orphan objects may be cleaned up. This is an expensive operation "
+      "and does not need to be done frequently. This period is subject to a "
+      "large per-shard jitter to avoid all shards scrubbing concurrently.",
+      {.needs_restart = needs_restart::no, .visibility = visibility::tunable},
+      // Default 24 hours
+      86400s)
   , cloud_storage_azure_storage_account(
       *this,
       "cloud_storage_azure_storage_account",
