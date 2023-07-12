@@ -3105,10 +3105,11 @@ class RedpandaService(RedpandaServiceBase):
             cur_ver = None
 
         # This node property isn't available on versions of RP older than 23.2.
-        if cur_ver and cur_ver >= (23, 2, 0):
-            memory_allocation_warning_threshold_bytes = 256 * 1024  # 256 KiB
-        else:
-            memory_allocation_warning_threshold_bytes = None
+        # if cur_ver and cur_ver >= (23, 2, 0):
+        #     memory_allocation_warning_threshold_bytes = 256 * 1024  # 256 KiB
+        # else:
+        # memory_allocation_warning_threshold_bytes = 256 * 1024  # 256 KiB
+        memory_allocation_warning_threshold_bytes = None
 
         conf = self.render("redpanda.yaml",
                            node=node,

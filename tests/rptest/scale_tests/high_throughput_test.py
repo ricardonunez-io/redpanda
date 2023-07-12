@@ -21,6 +21,7 @@ from rptest.services.cluster import cluster
 from rptest.services.failure_injector import FailureInjector, FailureSpec
 from rptest.services.kgo_verifier_services import (KgoVerifierProducer,
                                                    KgoVerifierRandomConsumer)
+from rptest.services.kgo_repeater_service import (repeater_traffic)
 from rptest.services.metrics_check import MetricCheck
 from rptest.services.openmessaging_benchmark import OpenMessagingBenchmark
 from rptest.services.openmessaging_benchmark_configs import \
@@ -155,7 +156,7 @@ class HighThroughputTest(PreallocNodesTest):
     #memory_per_broker_bytes = 96 * 1024 * 1024 * 1024  # 96 GiB
     # for i3en.xlarge (CDT ones)
     memory_per_broker_bytes = 32 * 1024 * 1024 * 1024  # 32 GiB
-    msg_size = 128 * 1024
+    msg_size = 1024
 
     def __init__(self, test_ctx, *args, **kwargs):
         self._ctx = test_ctx
@@ -175,19 +176,22 @@ class HighThroughputTest(PreallocNodesTest):
                 # to pad out tiered storage metadata, we don't want them to
                 # get merged together.
                 'cloud_storage_enable_segment_merging': False,
-                'disable_batch_cache': True,
+                # 'disable_batch_cache': True,
                 'cloud_storage_cache_check_interval': 1000,
+                'topic_partitions_per_shard': 10000,
             },
             disable_cloud_storage_diagnostics=True,
             **kwargs)
-        si_settings = SISettings(
-            self.redpanda._context,
-            log_segment_size=self.small_segment_size,
-            cloud_storage_cache_size=10 * 1024 * 1024,
-        )
-        self.redpanda.set_si_settings(si_settings)
+        # si_settings = SISettings(
+        #     self.redpanda._context,
+        #     log_segment_size=self.small_segment_size,
+        #     cloud_storage_cache_size=10 * 1024 * 1024,
+        # )
+        # self.redpanda.set_si_settings(si_settings)
         self.rpk = RpkTool(self.redpanda)
-        self.s3_port = si_settings.cloud_storage_api_endpoint_port
+        # self.s3_port = si_settings.cloud_storage_api_endpoint_port
+
+        self.redpanda.set_expected_controller_records(3000)
 
     def setup_cluster(self,
                       segment_bytes: int,
@@ -203,7 +207,7 @@ class HighThroughputTest(PreallocNodesTest):
         topic_config = {
             # Use a tiny segment size so we can generate many cloud segments
             # very quickly.
-            'segment.bytes': segment_bytes,
+            # 'segment.bytes': segment_bytes,
 
             # Use infinite retention so there aren't sudden, drastic,
             # unrealistic GCing of logs.
@@ -211,7 +215,7 @@ class HighThroughputTest(PreallocNodesTest):
 
             # Keep the local retention low for now so we don't get bogged down
             # with an inordinate number of local segments.
-            'retention.local.target.bytes': retention_local_bytes,
+            # 'retention.local.target.bytes': retention_local_bytes,
             'cleanup.policy': 'delete',
         }
         self.rpk.create_topic(self.topic_name,
@@ -220,6 +224,8 @@ class HighThroughputTest(PreallocNodesTest):
                               config=topic_config)
 
     def load_many_segments(self):
+        return
+
         target_cloud_segments = self.num_segments_per_partition * self.scaled_num_partitions
         try:
             producer = KgoVerifierProducer(
@@ -257,7 +263,7 @@ class HighThroughputTest(PreallocNodesTest):
         node_str = f"{node.account.hostname} (node_id: {node_id})"
         return node, node_id, node_str
 
-    @cluster(num_nodes=5, log_allow_list=RESTART_LOG_ALLOW_LIST)
+    @cluster(num_nodes=25, log_allow_list=RESTART_LOG_ALLOW_LIST)
     def test_combo_preloaded(self):
         """
         Preloads cluster with large number of messages/segments that are also
@@ -272,19 +278,16 @@ class HighThroughputTest(PreallocNodesTest):
         # Generate a realistic number of segments per partition.
         self.load_many_segments()
         try:
-            producer = KgoVerifierProducer(
-                self.test_context,
-                self.redpanda,
-                self.topic_name,
-                msg_size=128 * 1024,
-                msg_count=5 * 1024 * 1024 * 1024 * 1024,
-                rate_limit_bps=self.scaled_data_bps,
-                custom_node=[self.preallocated_nodes[0]])
-            try:
-                producer.start()
-                wait_until(lambda: producer.produce_status.acked > 10000,
-                           timeout_sec=60,
-                           backoff_sec=1.0)
+            with repeater_traffic(context=self.test_context,
+                                redpanda=self.redpanda,
+                                nodes=self.preallocated_nodes,
+                                topic=self.topic_name,
+                                msg_size=self.msg_size,
+                                workers=512) as repeater:
+
+                repeater.await_group_ready()
+
+                repeater.await_progress(10000, 60)
 
                 # Run a rolling restart.
                 self.stage_rolling_restart()
@@ -304,9 +307,6 @@ class HighThroughputTest(PreallocNodesTest):
 
                 # Block traffic to/from one node.
                 self.stage_block_node_traffic()
-            finally:
-                producer.stop()
-                producer.wait(timeout_sec=600)
         finally:
             self.free_preallocated_nodes()
 
@@ -447,7 +447,7 @@ class HighThroughputTest(PreallocNodesTest):
                 self.test_context,
                 self.redpanda,
                 self.topic_name,
-                msg_size=128 * 1024,
+                msg_size=self.msg_size,
                 msg_count=5 * 1024 * 1024 * 1024 * 1024,
                 rate_limit_bps=self.scaled_data_bps,
                 custom_node=[self.preallocated_nodes[0]])
@@ -583,7 +583,7 @@ class HighThroughputTest(PreallocNodesTest):
             consumer.stop()
             consumer.wait(timeout_sec=600)
 
-    @cluster(num_nodes=7, log_allow_list=RESTART_LOG_ALLOW_LIST)
+    @cluster(num_nodes=28, log_allow_list=RESTART_LOG_ALLOW_LIST)
     def test_consume(self):
         self.setup_cluster(segment_bytes=self.small_segment_size,
                            retention_local_bytes=2 * self.small_segment_size)
