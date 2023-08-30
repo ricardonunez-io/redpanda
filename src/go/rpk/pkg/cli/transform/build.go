@@ -48,8 +48,8 @@ build a .wasm file.
 					"-opt", "2",
 					// Print out an error before aborting
 					"-panic", "print",
-					// This is all single threaded, no goroutines
-					"-scheduler", "none",
+					// Support goroutines using Binaryen’s Asyncify Pass
+					"-scheduler", "asyncify",
 					// Output using the project name, deploy expects this
 					"-o", fmt.Sprintf("%s.wasm", cfg.Name),
 				}
