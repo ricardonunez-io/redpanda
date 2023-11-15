@@ -4,7 +4,7 @@ There are 2 licenses for Redpanda. BSL covers our core and RCL (Redpanda Communi
 which covers enterprise features.
 
 1. [BSL](bsl.md): The intent as we mentioned in our [blog post](https://redpanda.com/blog/open-source/)
-is to allow any use of the none enterprise features Redpanda unless you want to
+is to allow any use of the non-enterprise features Redpanda unless you want to
 offer Redpanda as a service. The license will at some point in the future (change date) become Apache 2.
 
 2. [RCL](rcl.md): Redpanda Community License - is intended to allow you to use enterprise features
